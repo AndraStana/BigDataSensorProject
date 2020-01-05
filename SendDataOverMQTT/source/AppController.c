@@ -276,7 +276,7 @@ static Retcode_T AppControllerValidateWLANConnectivity(void)
 #endif /* APP_MQTT_SECURE_ENABLE */
 
         if (RETCODE_OK == retcode)
-        {printf("MAAA CONECTAAAI LA LAN AICI\n\r");
+        {
             retcode = MQTT_ConnectToBroker(&MqttConnectInfo, MQTT_CONNECT_TIMEOUT_IN_MS);
             if (RETCODE_OK != retcode)
             {
@@ -310,16 +310,17 @@ static Retcode_T AppControllerValidateWLANConnectivity(void)
 static void AppControllerFire(void* pvParameters)
 {
 
-	printf("------------------DO YOU EVEN PUBLISH?--------------");
     BCDS_UNUSED(pvParameters);
 
     Retcode_T retcode = RETCODE_OK;
     Sensor_Value_T sensorValue;
     char publishBuffer[APP_MQTT_DATA_BUFFER_SIZE];
-    const char *publishDataFormat = "Environmental Data -\n"
+    const char *publishDataFormat = "~~~~~ Environmental Data -\n"
             "\r\tHumidity : %ld\n"
             "\r\tPressure : %ld\n"
             "\r\tTemperature : %f\xf8\n";
+
+//    const char *publishDataFormat = "%ld;%ld;%f\xf8\n";
 
     memset(&sensorValue, 0x00, sizeof(sensorValue));
 #if APP_MQTT_SECURE_ENABLE
@@ -358,8 +359,6 @@ static void AppControllerFire(void* pvParameters)
         }
     }
 
-    printf("-----1------Before While(1) for Publish------------ \n\r");
-
     if (RETCODE_OK != retcode)
     {
         /* We raise error and still proceed to publish data periodically */
@@ -368,7 +367,6 @@ static void AppControllerFire(void* pvParameters)
     }
 
 
-    printf("-----2------Before While(1) for Publish------------ \n\r");
 
     /* A function that implements a task must not exit or attempt to return to
      its caller function as there is nothing to return to. */
@@ -380,17 +378,14 @@ static void AppControllerFire(void* pvParameters)
         /* Check whether the WLAN network connection is available */
 
 
-        printf("-----------AppControllerValidateWLANConnectivity()------------ \n\r");
         retcode = AppControllerValidateWLANConnectivity();
         if (RETCODE_OK == retcode)
         {
-        	printf("-----------Sensor_GetData(&sensorValue)------------ \n\r");
             retcode = Sensor_GetData(&sensorValue);
         }
         if (RETCODE_OK == retcode)
         {
 
-        	printf("-----------MQTT_PublishToTopic(&MqttPublishInfo, MQTT_PUBLISH_TIMEOUT_IN_MS)------------ \n\r");
             int32_t length = snprintf((char *) publishBuffer, APP_MQTT_DATA_BUFFER_SIZE, publishDataFormat,
                     (long int) sensorValue.RH, (long int) sensorValue.Pressure,
                     (sensorValue.Temp /= 1000));
@@ -431,39 +426,31 @@ static void AppControllerEnable(void * param1, uint32_t param2)
     BCDS_UNUSED(param1);
     BCDS_UNUSED(param2);
 
-    printf("---1----WLAN_Enable()------ \r\n");
     Retcode_T retcode = WLAN_Enable();
-    printf("---2----WLAN_Enable()------ \r\n");
 
     if (RETCODE_OK == retcode)
     {
 
-    	printf("-------ServalPAL_Enable()------ \r\n");
         retcode = ServalPAL_Enable();
     }
 #if APP_MQTT_SECURE_ENABLE
     if (RETCODE_OK == retcode)
     {
-    	printf("-------SNTP_Enable()------ \r\n");
         retcode = SNTP_Enable();
     }
 #endif /* APP_MQTT_SECURE_ENABLE */
     if (RETCODE_OK == retcode)
     {
-    	printf("------- MQTT_Enable()------ \r\n");
         retcode = MQTT_Enable();
     }
     if (RETCODE_OK == retcode)
     {
-    	printf("-------Sensor_Enable()------ \r\n");
         retcode = Sensor_Enable();
     }
     if (RETCODE_OK == retcode)
     {
-    	printf("--1-----RETCODE(RETCODE_SEVERITY_ERROR, RETCODE_OUT_OF_RESOURCES)------ \r\n");
         if (pdPASS != xTaskCreate(AppControllerFire, (const char * const ) "AppController", TASK_STACK_SIZE_APP_CONTROLLER, NULL, TASK_PRIO_APP_CONTROLLER, &AppControllerHandle))
         {
-        	printf("--2-----RETCODE(RETCODE_SEVERITY_ERROR, RETCODE_OUT_OF_RESOURCES)------ \r\n");
             retcode = RETCODE(RETCODE_SEVERITY_ERROR, RETCODE_OUT_OF_RESOURCES);
         }
     }
